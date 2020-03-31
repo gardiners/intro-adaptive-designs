@@ -78,7 +78,7 @@ Slightly more formally, in the language of probability:
 
 * We know that in the community, $\Pr(\text{disease}) = \frac{1}{1000}$. We call this our **prior** belief.
 * We know $\Pr(\text{positive test}|\text{disease}) = \frac{95}{100}$. We call this the **likelihood**. This tells us how our new evidence (the positive test result) should inform our prior, allowing us to update our beliefs.
-* We can deduce from the specificity that a false positive, $\Pr(\text{positive test}|\text{no disease}) = \frac{5}{100}$. With this and the likelihood, we have exaustively listed all the ways that we can get a positive test result  - we either get a true positive or a false positive. We can comebine these to describe the overall **evidence** we obtain from a positive test result. This takes the form of a weighted average:
+* We can deduce from the specificity that a false positive, $\Pr(\text{positive test}|\text{no disease}) = \frac{5}{100}$. With this and the likelihood, we have exhaustively listed all the ways that we can get a positive test result  - we either get a true positive or a false positive. We can combine these to describe the overall **evidence** we obtain from a positive test result. This takes the form of a weighted average:
 
 $$
 \begin{aligned}
@@ -126,7 +126,7 @@ $$
 So, the probability that I actually have the disease, even though I have tested positive, is only around 0.02 (or 2%). This isn't terribly informative, but is still much higher than before I updated my belief with the screening test evidence ($\frac{1}{1000}$ before the test compared to $\frac{20}{1000}$ afterwards).
 
 <div class="notes">
-This really shows the importance of pre-test probability. Even though the operating characterstics of this screening test sound pretty good (99% sensitivity and 95% specificity), because of the very low pre-test probability (prior), if we tested the entire population, around 98% of the positive results would actually be false positives, leading to stressful, expensive and unneccesary investigations or treatments. If you've been following along with the problems that the US had with their COVID-19 qPCR tests: their primer sequence was self-complimentary, which resulted in very low test specificity. 
+This really shows the importance of pre-test probability. Even though the operating characteristics of this screening test sound pretty good (99% sensitivity and 95% specificity), because of the very low pre-test probability (prior), if we tested the entire population, around 98% of the positive results would actually be false positives, leading to stressful, expensive and unnecessary investigations or treatments. If you've been following along with the problems that the US had with their COVID-19 qPCR tests: their primer sequence was self-complimentary, which resulted in very low test specificity. 
 </div>
 
 # Bayesian inference
@@ -258,7 +258,7 @@ posterior_plot +
 
 ## Adaptive trial design
 
-* Adaptive designs use the information collected during a study to make intermin decisions
+* Adaptive designs use the information collected during a study to make interim decisions
   * to perform interim safety, futility and efficacy analysis after each cohort, or after a certain number of doses
     * e.g. to increase the dose after a certain number safe doses as in classical oncology phase I dose-escalation designs
   * to adjust randomisation probability to particular trial arms according to:
@@ -271,8 +271,8 @@ posterior_plot +
 ## Adaptive trial design
 
 * Adaptive designs allow us to receive early signals of efficacy, futility or toxicity
-  * Might allow us to end a trial early if a drug has a larger benefit than anticipted at design time
-    * The drug gets to market sooner, benefitting more patients
+  * Might allow us to end a trial early if a drug has a larger benefit than anticipated at design time
+    * The drug gets to market sooner, benefiting more patients
   * We could end a trial early if we get a strong safety signal
     * Fewer patients exposed
   * Might be able to treat more patients with a better-performing arm
@@ -282,7 +282,7 @@ posterior_plot +
 
 ## Bayesian adaptive trials?
 
-* Adaptive designs don't neccesarily have to be Bayesian
+* Adaptive designs don't necessarily have to be Bayesian
   * More often than not, adaptive trials are analysed using frequentist procedures
 * However, the Bayesian approach is a good fit
   * A principled framework for updating existing beliefs (eg a trial design) using new evidence (eg the data collected during the trial)
@@ -297,6 +297,34 @@ posterior_plot +
 A Bayesian approach to adaptive randomisation:
 
 * We have a multi-arm clinical trial.
-* We recruit sequentially over time, rather than dosing all of our participants at once.
-* Using the results from the patients we have have already dosed, compute a posterior distribution for efficacy (for example) for each arm.
-* 
+* We recruit sequentially over time.
+* Using the results from the patients we have have already dosed, compute the posterior distribution for each arm for the probability that that arm is superior to the others.
+* Adjust randomisation probability so that the next patient is more likely to be randomised to the best-performing arm.
+* Update after each patient or cohort.
+
+## Thomson sampling
+
+Advantages:
+
+* Asymptotically optimal solution to the exploration-exploitation trade-off
+  * ie if we kept recruiting an infinite number of patients, this is provably the best possible way to assign them so that the largest number receive a benefit, if one of the arms is better.
+* Reasonably easy to explain to the FDA what happened.
+
+Disadvantages:
+
+* Very sensitive to early patient results
+  * if we got unlucky and got "bad" results for our first few patients on a particular arm, our chances of recruiting more patients to that arm are very low, even if the arm is actually the best.
+ 
+There are (many) more complex Bayesian adaptive randomisation algorithms have been developed which solve this particular problem.
+
+# Summary
+
+## Key points
+
+* Bayesian inference is a statistical framework that allows us to update our initial beliefs as new evidence becomes available.
+* Using  this framework, we can adapt the design of a clinical trial using the data that the trial is already generating.
+  * for patient benefit
+  * to improve statistical power or reduce sample size
+  * to end trials early
+  
+## Questions? 
