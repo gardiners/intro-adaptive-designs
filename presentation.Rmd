@@ -1,0 +1,302 @@
+---
+title: "Introduction to Adaptive Clinical Trial Designs"
+subtitle: "Reporting back from the NHMRC CTC workshop \"Bayesian Adaptive Randomised Clinical Trials\""
+author: "Sam Gardiner"
+output:
+  ioslides_presentation:
+    widescreen: true
+    smaller: true
+    logo: "resources/logo.png"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, fig.align = "center")
+library(tidyverse)
+library(patchwork)
+library(gganimate)
+
+theme_illustration <- theme_void() + theme(legend.position = "none", strip.text.x = element_blank())
+```
+
+# Workshop report
+
+## Bayesian Adaptive Randomised Clinical Trials workshop
+
+* Two-day workshop organised by ACTA (Australian Clinical Trials Alliance) and the NHMRC Clinical Trials Center on 5-6 Mar 2020.
+* Presented by Lorenzo Trippa and Steffen Ventz from the Dana Farber Cancer Institute
+* 30-ish academics, statisticians and other postgrad students
+
+### Workshop materials
+
+* A copy of the slides and the simulation code is available for our internal use.
+* The workshop slides are not for general distribution as they contain unpublished trial data and in-press simulation code.
+
+<div class = "notes">
+* 5 March seems like a lifetime ago!
+* To give  you an idea of the size of this team - Dana Farber has about 100 breast cancer trials running at any given time, with a few new trials starting each week. That's just one disease in a pan-cancer institute.
+</div>
+
+## Bayesian Adaptive Randomised Clinical Trials workshop
+
+### Workshop topics
+
+  * Refresher on Bayesian inference
+  * Trial operating characteristics as a function of their design
+  * Simulating the design space to optimise for operating characteristics
+  * Examination of a few Bayesian design procedures and their statistical/operational properties
+  * Adaptive randomisation
+  * Interim analyses
+    * Common methods for controlling Type I error when "peeking"
+    * Bayesian approaches
+
+# Today's journal club
+
+## Today's goals
+
+* Bayes' theorem
+* Introduce Bayesian inference
+* Briefly introduce adaptive randomisation
+
+<div class="notes">
+12 hours of seminars and 4 hours of coding - compressed down to 1 hour journal club. I'll keep it brief and introductory, but if you are interested in any of the topics, I would love to talk to you more!
+</div>
+
+# Bayes' theorem
+
+## The inverse probability problem
+
+* We know that the prevalence of a particular disease is $\frac{1}{1000}$ people (which means that $\frac{999}{1000}$ people in the population do not have the disease).
+* We have a screening test that has good operating characteristics: 99% sensitivity and 95% specificity
+  * **Sensitivity**: $\frac{99}{100}$ of people who have the disease will produce a positive result when tested (or equivalently, $\frac{1}{100}$ people with the disease will produce a false negative)
+  * **Specificity**: $\frac{95}{100}$ people who don't have the disease will produce a negative result (equivalently, $\frac{5}{100}$ will produce a false positive)
+* I have just received a positive result from the screening test.
+* How certain can I be that I actually have the disease?
+
+## The inverse probability problem
+
+Slightly more formally, in the language of probability:
+
+* We know that in the community, $\Pr(\text{disease}) = \frac{1}{1000}$. We call this our **prior** belief.
+* We know $\Pr(\text{positive test}|\text{disease}) = \frac{95}{100}$. We call this the **likelihood**. This tells us how our new evidence (the positive test result) should inform our prior, allowing us to update our beliefs.
+* We can deduce from the specificity that a false positive, $\Pr(\text{positive test}|\text{no disease}) = \frac{5}{100}$. With this and the likelihood, we have exaustively listed all the ways that we can get a positive test result  - we either get a true positive or a false positive. We can comebine these to describe the overall **evidence** we obtain from a positive test result. This takes the form of a weighted average:
+
+$$
+\begin{aligned}
+\Pr(\text{positive test}) &= \Pr(\text{positive test|disease}) \times \Pr (\text{disease}) \\
+&\qquad + \Pr{(\text{positive test|no disease})} \times \Pr (\text{no disease})
+\end{aligned}
+$$
+
+* We would like to learn $\Pr(\text{disease}|\text{positive test})$. We call this our **posterior** belief. This is our original belief, updated by the new evidence.
+
+## Bayes' theorem
+
+Bayes' theorem is a beautiful tool that allows us to answer this question. For events $A$ and $B$:
+
+$$
+\Pr{(B|A)} = \frac{\Pr{(A|B)} \times \Pr(A)}{\Pr(B)}
+$$
+or in the language we just introduced,
+
+$$
+\text{posterior belief} = \frac{\text{likelihood} \times \text{prior belief}}{\text{evidence}} \\
+$$
+
+or in the terms of our diagnostic test,
+
+$$
+\Pr{(\text{disease|positive test})} = \frac{\Pr{(\text{positive test|disease})} \times \Pr{(\text{disease})}}
+{\Pr(\text{positive test})}
+$$
+
+## Bayes' theorem
+
+We now have the tools to solve our inverse probability problem:
+
+$$
+\begin{aligned}
+\Pr{(\text{disease|positive test})} &= \frac{\Pr{(\text{positive test|disease})} \times \Pr{(\text{disease})}}
+  {\Pr(\text{positive test})} \\
+&= \frac{\frac{99}{100} \times \frac{1}{1000}}
+  {\frac{99}{100} \times \frac{1}{1000} + \frac{5}{100} \times \frac{999}{1000}}\\
+& \approx 0.02
+\end{aligned}
+$$
+
+So, the probability that I actually have the disease, even though I have tested positive, is only around 0.02 (or 2%). This isn't terribly informative, but is still much higher than before I updated my belief with the screening test evidence ($\frac{1}{1000}$ before the test compared to $\frac{20}{1000}$ afterwards).
+
+<div class="notes">
+This really shows the importance of pre-test probability. Even though the operating characterstics of this screening test sound pretty good (99% sensitivity and 95% specificity), because of the very low pre-test probability (prior), if we tested the entire population, around 98% of the positive results would actually be false positives, leading to stressful, expensive and unneccesary investigations or treatments. If you've been following along with the problems that the US had with their COVID-19 qPCR tests: their primer sequence was self-complimentary, which resulted in very low test specificity. 
+</div>
+
+# Bayesian inference
+
+## Bayes' theorem and probability distributions
+
+We've just applied Bayes' theorem to estimate a single probability, but it works perfectly for probability distributions as well. 
+
+```{r fig.height = 2, fig.width=6, fig.cap="Histograms of data from simulated $\\chi^2(2)$, $\\mathcal{N}(0,1)$ and $t(5)$ distributions"}
+dist_data <- data.frame(
+  normal = rnorm(1000),
+  chisq = rchisq(1000, 2),
+  tdist = rt(1000, 5)
+)
+
+dist_data %>%
+  pivot_longer(cols = everything()) %>%
+  ggplot(aes(x = value, fill = name)) +
+  geom_histogram(bins = 20) +
+  facet_grid(~name, scales = "free") + 
+  theme_illustration
+```
+
+Normally we are interested in updating our beliefs about the distributions of model parameters. These might be, for example, the mean effect size of a drug or the value of regression coefficient.
+
+<div class="notes">
+If you're unsure about what exactly a probability distribution is, it helps to picture a histogram. A distribution is a function which maps an event to a probability. In the case of the histograms on this slide, the event is an observed numeric value (on the x axis), and the probability of that event occurring is on the y axis.
+</div>
+
+
+## Bayes' theorem and probability distributions
+
+Suppose we have a very weak prior belief about the value of a parameter. We could quantify our uncertainty by expressing it as a wide, relatively flat probability distribution. We then collect some experimental data which suggests that the value of the parameter is actually around 6, with reasonable certainty.
+
+
+```{r, fig.height=3, fig.width=4}
+p_grid <- seq(-20, 20, length.out = 100)
+prior <- dnorm(p_grid, mean = 0, sd = 10)
+likelihood <- dnorm(p_grid, mean = 6, sd = 2)
+posterior <- (likelihood * prior) / sum (likelihood * prior)
+
+anim_data <- tibble(
+  x = p_grid,
+  Prior = prior,
+  `New evidence` = likelihood,
+  Posterior = posterior
+) %>%
+  pivot_longer(-x, names_to = "state") 
+
+anim_data %>%
+  filter(state %in% c("Prior", "New evidence")) %>%
+  mutate(statef = factor(state, levels = c("Prior", "New evidence", "Posterior"))) %>%
+  ggplot(aes(x, value, fill = state)) +
+  geom_ribbon(aes(ymax = value), ymin = 0) +
+  facet_wrap(~statef) +
+  theme(legend.position = "none") +
+  labs(x = "Parameter value", y = "Probability")
+```
+
+## Updating belief
+
+Bayes' theorem allows us to use the new data we have gathered to update our prior belief.
+
+```{r anim_chunk}
+anim <- anim_data %>%
+  filter(state %in% c("Prior", "Posterior")) %>%
+  mutate(statef = factor(state, levels = c("Prior", "Posterior"))) %>%
+  arrange(-desc(state)) %>%
+  ggplot(aes(x, value)) +
+  geom_line() + 
+  transition_states(statef) + 
+  ease_aes('cubic-in-out') +
+  labs(x = "Parameter value", y = "Probability") +
+  ggtitle("{closest_state}")
+
+animate(anim, height = 400, width = 700)
+```
+
+## Inference on the posterior
+
+* We have obtained the posterior distribution - a probability distribution that incorporates our prior belief about a parameter with new evidence.
+* We're interested in making statements about our parameter values (e.g. our means, confidence intervals, uncertainty).
+* We can learn all of this information from the posterior distribution.
+* Often the precise posterior distribution's density can't be expressed in closed form, so we need to simulate observations from the posterior in order to make inference. Almost all modern Bayesian inference is performed using this technique.
+
+## Posterior mode
+
+* A point estimate of the parameter value of interest, after considering new evidence.
+* Conceptually equivalent to the maximum likelihood estimator in frequentist statistics (for example, the arithmetic mean).
+  * With a completely non-informative prior, exactly equal to the maximum likelihood estimator.
+  * With a strong prior, a point estimate with larger bias but smaller variance ("shrunk") than the maximum likelihood estimator.
+
+```{r fig.height=3}
+posterior_plot <- anim_data %>%
+  filter(state == "Posterior") %>%
+  ggplot(aes(x, value)) +
+  geom_line() +
+  labs(x = "Parameter value", y = "Probability")
+
+posterior_plot +
+  geom_segment(x = p_grid[which.max(posterior)], xend = p_grid[which.max(posterior)],
+               y = 0, yend = max(posterior), linetype = 2, colour = "firebrick") +
+  ggtitle("Posterior mode = 5.86")
+```
+
+<div class="notes">
+So, we can say that the single likeliest value for our parameter of interest is 5.86, incorporating both our prior belief and the new evidence.
+</div>
+
+
+## Bayesian credible interval
+
+* A statement about the probability that an interval contains the parameter of interest.
+* Analogous to a frequentist confidence interval, but with easier interpretation - can be literally interpreted as a probability.
+
+```{r, fig.height=3}
+posterior_sample <- sample(p_grid, size = 100000, replace = TRUE, prob = posterior)
+credible <- quantile(posterior_sample, probs = c(0.025, 0.975))
+
+posterior_interval <- data.frame(x = p_grid[p_grid >= credible[1] & p_grid <= credible[2]],
+                                 value = posterior[p_grid >= credible[1] & p_grid <= credible[2]])
+posterior_plot +
+  geom_ribbon(data = posterior_interval, aes(ymax = value), ymin = 0,
+              fill = "firebrick", alpha = 1/3) +
+  ggtitle("95% credible interval (1.82, 9.49)")
+```
+
+# Adaptive trials
+
+## Adaptive trial design
+
+* Adaptive designs use the information collected during a study to make intermin decisions
+  * to perform interim safety, futility and efficacy analysis after each cohort, or after a certain number of doses
+    * e.g. to increase the dose after a certain number safe doses as in classical oncology phase I dose-escalation designs
+  * to adjust randomisation probability to particular trial arms according to:
+    * patient covariates (age, sex, cancer stage etc)
+    * evidence of potential benefit
+* FDA guidance on adaptive designs specifies that the interim analyses and adaptive features must be pre-specified
+  * We can't just change the protocol as we go
+  * The risk of generating a false positive result (Type I error) has to be controlled to account for analysing the data multiple times.
+
+## Adaptive trial design
+
+* Adaptive designs allow us to receive early signals of efficacy, futility or toxicity
+  * Might allow us to end a trial early if a drug has a larger benefit than anticipted at design time
+    * The drug gets to market sooner, benefitting more patients
+  * We could end a trial early if we get a strong safety signal
+    * Fewer patients exposed
+  * Might be able to treat more patients with a better-performing arm
+    * More patients receive the better treatment
+    * Easier to recruit if patients more likely to receive non-placebo arm and the drug is effective
+* Very common in early-stage oncology trials
+
+## Bayesian adaptive trials?
+
+* Adaptive designs don't neccesarily have to be Bayesian
+  * More often than not, adaptive trials are analysed using frequentist procedures
+* However, the Bayesian approach is a good fit
+  * A principled framework for updating existing beliefs (eg a trial design) using new evidence (eg the data collected during the trial)
+* Prior beliefs are already implicitly a big part of trial design:
+  * Starting dose based on animal models
+  * Expected toxicities based on similar drugs
+  * Expected survival based on current best therapy
+* So, why not explicitly incorporate these prior beliefs into the statistical model, rather than leaving them implicit?
+
+## Thomson sampling
+
+A Bayesian approach to adaptive randomisation:
+
+* We have a multi-arm clinical trial.
+* We recruit sequentially over time, rather than dosing all of our participants at once.
+* Using the results from the patients we have have already dosed, compute a posterior distribution for efficacy (for example) for each arm.
+* 
