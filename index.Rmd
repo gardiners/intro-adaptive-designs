@@ -7,10 +7,11 @@ output:
     widescreen: true
     smaller: true
     logo: "resources/logo.png"
+    self-contained: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, cache = TRUE, fig.align = "center")
+knitr::opts_chunk$set(echo = FALSE, cache = TRUE, message = FALSE, warning = FALSE, fig.align = "center")
 library(tidyverse)
 library(patchwork)
 library(gganimate)
@@ -190,7 +191,7 @@ anim_data %>%
 
 Bayes' theorem allows us to use the new data we have gathered to update our prior belief.
 
-```{r anim_chunk}
+```{r anim_chunk, echo = FALSE, warning = FALSE, message = FALSE, error = FALSE}
 anim <- anim_data %>%
   filter(state %in% c("Prior", "Posterior")) %>%
   mutate(statef = factor(state, levels = c("Prior", "Posterior"))) %>%
